@@ -1,1 +1,24 @@
-database:\n  host: localhost\n  port: 5432\n  name: marginalia_db
+# Kiosk Voice AI Configuration
+# Environment: Production-Edge
+
+system:
+  region: us-east-1
+  log_level: INFO
+  latency_threshold_ms: 400.0
+
+llm:
+  main_model: meta.llama3-70b-v1:0
+  fallback_model: anthropic.claude-3-5-sonnet-20240620
+  temperature: 0.1
+  max_tokens: 128
+
+voice:
+  stt_provider: pipecat
+  tts_provider: pipecat
+  sample_rate: 16000
+  noise_suppression: high
+
+kiosk:
+  game_id: guess-the-animal-v2
+  store_id: US-8821
+  session_timeout: 300
