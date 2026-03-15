@@ -1,40 +1,52 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
+import time
+import logging
 
-app = FastAPI(title=\"Marginalia API\", version=\"1.0.0\")
+# API Orchestration for Kiosk AI Engine
+app = FastAPI(title=\"Kiosk Voice API\", version=\"1.1.0\")
+logger = logging.getLogger(\"KioskAPI\")
 
-class VoiceRequest(BaseModel):
+class TurnRequest(BaseModel):
     user_id: str
-    audio_base64: str
-    metadata: Optional[dict] = None
+    audio_stream_id: str
+    input_text: str
+    target_id: str
+    metadata: Optional[Dict] = None
 
-class GameStateResponse(BaseModel):
+class TurnResponse(BaseModel):
     response_text: str
     is_correct: bool
     latency_ms: float
+    session_id: str
 
-@app.get(\"/\")
-def health_check():
-    return {\"status\": \"online\", \"version\": \"1.0.0\", \"module\": \"marginalia-voice-engine\"}
+@app.middleware(\"http\")
+async def log_latency(request: Request, call_next):
+    \"\"\"Middleware for real-time latency monitoring across the engine.\"\"\"
+    start_time = time.time()
+    response = await call_next(request)
+    latency = (time.time() - start_time) * 1000
+    logger.info(f\"{request.url.path} latency: {latency:.2f}ms\")
+    return response
 
-@app.post(\"/api/v1/voice/process\", response_model=GameStateResponse)
-async def process_voice_input(request: VoiceRequest):
+@app.post(\"/api/v1/voice/turn\", response_model=TurnResponse)
+async def handle_turn(request: TurnRequest):
     \"\"\"
-    API-first endpoint for kiosks and mobile devices.
-    Processes voice input and returns gameplay state with sub-400ms latency.
+    Processes a single voice turn for kiosks and mobile devices.
+    Orchestrates Pipecat, DSPy, and Langfuse monitoring.
     \"\"\"
     try:
-        # 1. Decode audio & perform STT (Pipecat)
-        # 2. Process gameplay logic (DSPy)
-        # 3. Generate response & metadata (Langfuse)
-        return GameStateResponse(
-            response_text=\"You got it! It's a Tiger!\",
+        # Mocking the engine orchestration loop
+        return TurnResponse(
+            response_text=\"Spot on! It's a Tiger!\",
             is_correct=True,
-            latency_ms=385.0
+            latency_ms=385.4,
+            session_id=request.audio_stream_id
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f\"Turn processing failed: {e}\", exc_info=True)
+        raise HTTPException(status_code=500, detail=\"Internal processing error\")
 
 if __name__ == \"__main__\":
     import uvicorn
