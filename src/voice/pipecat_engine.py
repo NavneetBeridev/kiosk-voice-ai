@@ -1,30 +1,53 @@
 import asyncio
+import logging
+from typing import Optional, Dict
 from pipecat.transports.services.webrtc import WebRTCTransport
 from pipecat.services.openai import OpenAILLM
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.processors.aggregators.llm import LLMResponseAggregator
 
+# Production-grade logging
+logging.basicConfig(
+    level=logging.INFO,
+    format=\"%(asctime)s [%(levelname)s] %(name)s: %(message)s\"
+)
+logger = logging.getLogger(\"VoiceEngine\")
+
 class VoiceAIEngine:
     \"\"\"
-    High-performance Voice AI engine for real-time STT/TTS (sub-400ms).
-    Originally developed for McDonald's \"Guess the Animal\" interactive kiosk.
+    Handles low-latency Voice AI interactions for edge kiosks.
+    Built with Pipecat for sub-400ms end-to-end response times.
     \"\"\"
-    def __init__(self, api_key: str, webrtc_config: dict):
-        self.transport = WebRTCTransport(config=webrtc_config)
-        self.llm = OpenAILLM(api_key=api_key, model=\"gpt-4o\")
+    def __init__(self, api_key: str, rtc_config: Optional[Dict] = None):
+        self._api_key = api_key
+        self._rtc_config = rtc_config or {}
+        
+        # Core components
+        self.transport = WebRTCTransport(config=self._rtc_config)
+        self.llm = OpenAILLM(api_key=self._api_key, model=\"gpt-4o\")
+        
+        # Pipeline orchestration
         self.pipeline = Pipeline([
             self.transport.input(),
             LLMResponseAggregator(),
             self.llm,
             self.transport.output()
         ])
+        
+        logger.info(\"Engine initialized with WebRTC transport and OpenAI LLM\")
 
-    async def run(self):
-        \"\"\"Starts the real-time voice interaction loop.\"\"\"
-        print(\"[*] Starting Voice AI Engine (Marginalia)...\")
-        await self.pipeline.start()
+    async def start(self):
+        \"\"\"Starts the real-time processing loop.\"\"\"
+        try:
+            logger.info(\"Starting voice processing loop...\")
+            await self.pipeline.start()
+        except asyncio.CancelledError:
+            logger.info(\"Shutting down gracefully...\")
+        except Exception as e:
+            logger.error(f\"Critical engine failure: {e}\", exc_info=True)
+            raise
 
 if __name__ == \"__main__\":
-    # Example usage for a kiosk deployment
-    engine = VoiceAIEngine(api_key=\"YOUR_API_KEY\", webrtc_config={})
-    asyncio.run(engine.run())
+    # Mocking production initialization
+    engine = VoiceAIEngine(api_key=\"sk-...\", rtc_config={})
+    asyncio.run(engine.start())
