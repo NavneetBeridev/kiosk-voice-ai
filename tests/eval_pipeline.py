@@ -1,34 +1,39 @@
 import unittest
-from src.llm.gameplay_logic import GuessTheAnimalGame
+import logging
+from src.llm.gameplay_logic import LLMGameEngine
 
-class AutomatedEvaluation(unittest.TestCase):
+# Automated Evaluation for Model Performance
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(\"EvalPipeline\")
+
+class ModelEvaluationTests(unittest.TestCase):
     \"\"\"
-    Automated evaluation pipeline for model performance.
-    Used for regression testing and continuous improvement.
+    Continuous evaluation for LLM-driven gameplay logic.
+    Used for regression testing and performance benchmarking.
     \"\"\"
     def setUp(self):
-        self.game = GuessTheAnimalGame()
+        self.engine = LLMGameEngine()
         self.test_cases = [
-            {\"input\": \"Large gray animal with a trunk\", \"target\": \"Elephant\", \"expected_correct\": True},
-            {\"input\": \"Small bird with colorful feathers\", \"target\": \"Parrot\", \"expected_correct\": True},
-            {\"input\": \"A very fast turtle\", \"target\": \"Cheetah\", \"expected_correct\": False},
+            {\"input\": \"Large gray animal with a trunk\", \"target\": \"Elephant\", \"expected_match\": True},
+            {\"input\": \"Small bird with colorful feathers\", \"target\": \"Parrot\", \"expected_match\": True},
+            {\"input\": \"A very fast turtle\", \"target\": \"Cheetah\", \"expected_match\": False},
         ]
 
-    def test_accuracy(self):
-        \"\"\"Evaluates LLM output accuracy for gameplay logic.\"\"\"
-        correct_count = 0
+    def test_logic_accuracy(self):
+        \"\"\"Evaluates LLM turn-by-turn accuracy for gameplay logic.\"\"\"
+        correct = 0
         for case in self.test_cases:
-            result = self.game.forward(
+            result = self.engine.process_turn(
                 history=[], 
-                child_input=case[\"input\"], 
-                target_animal=case[\"target\"]
+                input_text=case[\"input\"], 
+                current_target=case[\"target\"]
             )
-            if result.is_correct == case[\"expected_correct\"]:
-                correct_count += 1
+            if result.is_match == case[\"expected_match\"]:
+                correct += 1
         
-        accuracy = (correct_count / len(self.test_cases)) * 100
-        print(f\"[*] Evaluation Accuracy: {accuracy}%\")
-        self.assertGreaterEqual(accuracy, 80.0)
+        accuracy = (correct / len(self.test_cases)) * 100
+        logger.info(f\"Turn Accuracy Evaluation: {accuracy:.2f}%\")
+        self.assertGreaterEqual(accuracy, 80.0, \"Logic accuracy below production threshold.\")
 
 if __name__ == \"__main__\":
     unittest.main()
