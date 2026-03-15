@@ -1,39 +1,43 @@
 import dspy
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 
-class KioskGameSignature(dspy.Signature):
+class GameplaySignature(dspy.Signature):
     \"\"\"
-    Interactive gameplay logic for McDonald's kiosks.
-    Identifies the animal based on a child's description and manages game state.
+    Interactive gameplay state management for high-decibel kiosk environments.
+    Translates noisy child input into structured game state updates.
     \"\"\"
-    history: List[Dict[str, str]] = dspy.InputField(desc=\"The previous conversation history.\")
-    child_input: str = dspy.InputField(desc=\"The child's voice input from the STT stream.\")
-    target_animal: str = dspy.InputField(desc=\"The animal the child is trying to describe.\")
+    history: List[Dict[str, str]] = dspy.InputField(desc=\"Previous conversational state.\")
+    raw_input: str = dspy.InputField(desc=\"Raw STT stream output (child's voice).\")
+    target: str = dspy.InputField(desc=\"Current target animal/IP for game context.\")
     
-    response: str = dspy.OutputField(desc=\"The AI's guiding response for the next turn.\")
-    is_correct: bool = dspy.OutputField(desc=\"True if the child correctly identified the animal.\")
+    response_text: str = dspy.OutputField(desc=\"Natural language AI response for TTS output.\")
+    is_match: bool = dspy.OutputField(desc=\"Boolean flag for correct identification.\")
 
-class GuessTheAnimalGame(dspy.Module):
+class LLMGameEngine(dspy.Module):
     \"\"\"
-    LLM-driven gameplay state management using DSPy.
-    Optimized for high-accuracy and real-time STT/TTS integration.
+    Declarative logic for McDonald's \"Guess the Animal\" interactive kiosks.
+    Optimized for high-accuracy and real-time response generation.
     \"\"\"
-    def __init__(self, model_name: str = \"anthropic.claude-3-5-sonnet-20240620\"):
+    def __init__(self, model_id: str = \"anthropic.claude-3-5-sonnet-20240620\"):
         super().__init__()
-        self.lm = dspy.LM(model_name)
-        self.predictor = dspy.ChainOfThought(KioskGameSignature)
+        self._lm = dspy.LM(model_id)
+        self.predictor = dspy.ChainOfThought(GameplaySignature)
 
-    def forward(self, history: List[Dict[str, str]], child_input: str, target_animal: str):
-        with dspy.settings.context(lm=self.lm):
-            return self.predictor(history=history, child_input=child_input, target_animal=target_animal)
+    def process_turn(self, history: List[Dict[str, str]], input_text: str, current_target: str) -> Any:
+        \"\"\"Executes a single gameplay turn and returns structured state.\"\"\"
+        with dspy.settings.context(lm=self._lm):
+            return self.predictor(
+                history=history, 
+                raw_input=input_text, 
+                target=current_target
+            )
 
 if __name__ == \"__main__\":
-    # Example initialization for a mobile device deployment
-    game = GuessTheAnimalGame()
-    result = game.forward(
+    # Quick verification for kiosk integration
+    engine = LLMGameEngine()
+    result = engine.process_turn(
         history=[],
-        child_input=\"It's a big yellow cat with black stripes and a loud roar!\",
-        target_animal=\"Tiger\"
+        input_text=\"It has a really long trunk and big ears!\",
+        current_target=\"Elephant\"
     )
-    print(f\"[*] AI Response: {result.response}\")
-    print(f\"[*] Correct: {result.is_correct}\")
+    print(f\"[*] AI Response: {result.response_text} (Match: {result.is_match})\")
